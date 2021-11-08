@@ -158,7 +158,13 @@ namespace Plugin.BLE.iOS
             if (filters != null && filters.Count>0)
             {
                 var uuidFilters = filters.Where(f => f.ServiceUuid != null);
-                serviceCbuuids = uuidFilters.Select(u => CBUUID.FromString(u.ToString())).ToArray();
+                serviceCbuuids = uuidFilters.Select(u =>
+                {
+                    var s = u.ServiceUuid.ToString();
+                    var uuid = new NSUuid(s);
+                    var cbuuid = CBUUID.FromNSUuid(uuid);
+                    return cbuuid;
+                }).ToArray();
                 Trace.Message("Adapter: Scanning for " + serviceCbuuids.First());
             }
 
