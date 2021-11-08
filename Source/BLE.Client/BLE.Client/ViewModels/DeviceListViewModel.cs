@@ -270,7 +270,19 @@ namespace BLE.Client.ViewModels
 
             await RaisePropertyChanged(() => IsRefreshing);
             Adapter.ScanMode = ScanMode.LowLatency;
-            await Adapter.StartScanningForDevicesAsync(_cancellationTokenSource.Token);
+            IList<ScanFilter> filters = new List<ScanFilter>
+            {
+                new ScanFilter
+                {
+                    ManufacturerId = 0x0059,
+                    ManufacturerData = new byte[] {2, 20, 163, 232, 149, 213, 23, 245, 67, 115, 188, 227, 217, 158, 149, 2, 253, 7, 2, 8, 206, 100, 255},
+                },
+                new ScanFilter
+                {
+                    ServiceUuid = Guid.Parse("0000180a-0000-1000-8000-00805f9b34fb")
+                }
+            };
+            await Adapter.StartScanningForDevicesAsync(filters, _cancellationTokenSource.Token);
         }
 
         private void CleanupCancellationToken()

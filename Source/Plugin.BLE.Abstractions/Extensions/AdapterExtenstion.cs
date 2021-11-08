@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -29,9 +30,9 @@ namespace Plugin.BLE.Abstractions.Extensions
         /// <param name="serviceUuids">Requested service Ids.</param>
         /// <param name="cancellationToken">The token to monitor for cancellation requests. The default value is None.</param>
         /// <returns>A task that represents the asynchronous read operation. The Task will finish after the scan has ended.</returns>
-        public static Task StartScanningForDevicesAsync(this IAdapter adapter, Guid[] serviceUuids, CancellationToken cancellationToken = default)
+        public static Task StartScanningForDevicesAsync(this IAdapter adapter, IList<ScanFilter> filters, CancellationToken cancellationToken = default)
         {
-            return adapter.StartScanningForDevicesAsync(serviceUuids, null, cancellationToken: cancellationToken);
+            return adapter.StartScanningForDevicesAsync(filters, false, cancellationToken: cancellationToken);
         }
 
         /// <summary>

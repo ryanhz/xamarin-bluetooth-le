@@ -14,6 +14,7 @@ using Plugin.BLE.Extensions;
 using Object = Java.Lang.Object;
 using Trace = Plugin.BLE.Abstractions.Trace;
 using Android.App;
+using ScanFilter = Android.Bluetooth.LE.ScanFilter;
 
 namespace Plugin.BLE.Android
 {
@@ -51,27 +52,27 @@ namespace Plugin.BLE.Android
             }
         }
 
-        protected override Task StartScanningForDevicesNativeAsync(Guid[] serviceUuids, bool allowDuplicatesKey, CancellationToken scanCancellationToken)
+        protected override Task StartScanningForDevicesNativeAsync(IList<Abstractions.Contracts.ScanFilter> filters, bool allowDuplicatesKey, CancellationToken scanCancellationToken)
         {
             if (Build.VERSION.SdkInt < BuildVersionCodes.Lollipop)
             {
-                StartScanningOld(serviceUuids);
+                StartScanningOld(filters);
             }
             else
             {
-                StartScanningNew(serviceUuids);
+                StartScanningNew(filters);
             }
 
             return Task.FromResult(true);
         }
 
-        private void StartScanningOld(Guid[] serviceUuids)
+        private void StartScanningOld(IList<Abstractions.Contracts.ScanFilter> filters)
         {
-            var hasFilter = serviceUuids?.Any() ?? false;
             UUID[] uuids = null;
-            if (hasFilter)
+            if(filters != null)
             {
-                uuids = serviceUuids.Select(u => UUID.FromString(u.ToString())).ToArray();
+                var uuidFilters = filters.Where(f => f.ServiceUuid != null);
+                uuids = uuidFilters.Select(u => UUID.FromString(u.ToString())).ToArray();
             }
             Trace.Message("Adapter < 21: Starting a scan for devices.");
 #pragma warning disable 618
@@ -79,19 +80,16 @@ namespace Plugin.BLE.Android
 #pragma warning restore 618
         }
 
-        private void StartScanningNew(Guid[] serviceUuids)
+        private void StartScanningNew(IList<Abstractions.Contracts.ScanFilter> filters)
         {
-            var hasFilter = serviceUuids?.Any() ?? false;
+            var hasFilter = filters != null && filters.Count>0;
             List<ScanFilter> scanFilters = null;
-
             if (hasFilter)
             {
                 scanFilters = new List<ScanFilter>();
-                foreach (var serviceUuid in serviceUuids)
+                foreach (var filter in filters)
                 {
-                    var sfb = new ScanFilter.Builder();
-                    sfb.SetServiceUuid(ParcelUuid.FromString(serviceUuid.ToString()));
-                    scanFilters.Add(sfb.Build());
+                    scanFilters.Add(filter.ToNative());
                 }
             }
 
@@ -109,7 +107,7 @@ namespace Plugin.BLE.Android
                 Trace.Message($"Adapter >=21: Starting a scan for devices. ScanMode: {ScanMode}");
                 if (hasFilter)
                 {
-                    Trace.Message($"ScanFilters: {string.Join(", ", serviceUuids)}");
+                    Trace.Message($"ScanFilters: {string.Join(", ", filters)}");
                 }
                 _bluetoothAdapter.BluetoothLeScanner.StartScan(scanFilters, ssb.Build(), _api21ScanCallback);
             }

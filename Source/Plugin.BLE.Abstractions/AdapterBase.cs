@@ -17,7 +17,6 @@ namespace Plugin.BLE.Abstractions
 
         private CancellationTokenSource _scanCancellationTokenSource;
         private volatile bool _isScanning;
-        private Func<IDevice, bool> _currentScanDeviceFilter;
 
         public event EventHandler<DeviceEventArgs> DeviceAdvertised;
         public event EventHandler<DeviceEventArgs> DeviceDiscovered;
@@ -45,7 +44,7 @@ namespace Plugin.BLE.Abstractions
 
         public IReadOnlyList<IDevice> ConnectedDevices => ConnectedDeviceRegistry.Values.ToList();
 
-        public async Task StartScanningForDevicesAsync(Guid[] serviceUuids = null, Func<IDevice, bool> deviceFilter = null, bool allowDuplicatesKey = false, CancellationToken cancellationToken = default)
+        public async Task StartScanningForDevicesAsync(IList<ScanFilter> filters = null, bool allowDuplicatesKey = false, CancellationToken cancellationToken = default)
         {
             if (IsScanning)
             {
@@ -54,8 +53,6 @@ namespace Plugin.BLE.Abstractions
             }
 
             IsScanning = true;
-            serviceUuids = serviceUuids ?? new Guid[0];
-            _currentScanDeviceFilter = deviceFilter ?? (d => true);
             _scanCancellationTokenSource = new CancellationTokenSource();
 
             try
@@ -64,7 +61,7 @@ namespace Plugin.BLE.Abstractions
 
                 using (cancellationToken.Register(() => _scanCancellationTokenSource?.Cancel()))
                 {
-                    await StartScanningForDevicesNativeAsync(serviceUuids, allowDuplicatesKey, _scanCancellationTokenSource.Token);
+                    await StartScanningForDevicesNativeAsync(filters, allowDuplicatesKey, _scanCancellationTokenSource.Token);
                     await Task.Delay(ScanTimeout, _scanCancellationTokenSource.Token);
                     Trace.Message("Adapter: Scan timeout has elapsed.");
                     CleanupScan();
@@ -185,9 +182,6 @@ namespace Plugin.BLE.Abstractions
 
         public void HandleDiscoveredDevice(IDevice device)
         {
-            if (_currentScanDeviceFilter != null && !_currentScanDeviceFilter(device))
-                return;
-
             DeviceAdvertised?.Invoke(this, new DeviceEventArgs { Device = device });
 
             // TODO (sms): check equality implementation of device
@@ -232,7 +226,7 @@ namespace Plugin.BLE.Abstractions
             });
         }
 
-        protected abstract Task StartScanningForDevicesNativeAsync(Guid[] serviceUuids, bool allowDuplicatesKey, CancellationToken scanCancellationToken);
+        protected abstract Task StartScanningForDevicesNativeAsync(IList<ScanFilter> filters, bool allowDuplicatesKey, CancellationToken scanCancellationToken);
         protected abstract void StopScanNative();
         protected abstract Task ConnectToDeviceNativeAsync(IDevice device, ConnectParameters connectParameters, CancellationToken cancellationToken);
         protected abstract void DisconnectDeviceNative(IDevice device);
